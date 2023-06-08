@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack
+    command: localstack start
+    env_file:
+      - ./infraestructure/fake_aws/.aws.env
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=s3,lambda,dynamodb
+      - PERSISTENCE=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack
+    networks:
+      - dynamo-poc
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    depends_on:
+      - localstack
+    ports:
+      - "8889:8001"
+    env_file:
+      - ./infraestructure/fake_aws/.aws.env
+    networks:
+      - dynamo-poc
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./infraestructure/fake_aws/.aws.env
+    ports:
+      - "5555:8000"
+    volumes:
+      - ./app:/app
+    networks:
+      - dynamo-poc
+
+networks:
+  dynamo-poc:
+    name: dynamo-poc
